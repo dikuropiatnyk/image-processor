@@ -1,0 +1,11 @@
+# Virtual environment
+venv/
+
+# Test folder for images
+images/
+
+# Pycharm metadata
+.idea/
+
+# Environment file
+.env
