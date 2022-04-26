@@ -8,4 +8,4 @@ images/
 .idea/
 
 # Environment file
-.env
+.env.secrets
