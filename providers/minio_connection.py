@@ -19,7 +19,8 @@ class MinioConnection:
         logging.info("Created a new MinIO client!")
         self.client = client
 
-    def send_image(self, image_name, image_bytes, bucket="test"):
+    def send_image(self, image_name, image_bytes, bucket="images"):
+        logging.info("Send image '%s'", image_name)
         result = self.client.put_object(
             bucket,
             image_name,
