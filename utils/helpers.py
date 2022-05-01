@@ -2,6 +2,10 @@ import asyncio
 import time
 import logging
 from functools import wraps
+from typing import Iterator, List
+from minio.datatypes import Object
+
+from models import MinioImage
 
 
 def _log_timing(func, start, finish):
@@ -48,3 +52,15 @@ def log_timing(func):
         return result
 
     return wrapper
+
+
+def map_images(images_gen: Iterator[Object]) -> List[MinioImage]:
+    return [
+        MinioImage(
+            id=image.etag,
+            image_name=image.object_name,
+            timestamp=image.last_modified,
+            image_size=round(image.size / 1024, 2)
+        )
+        for image in images_gen
+    ]

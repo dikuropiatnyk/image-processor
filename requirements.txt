@@ -16,3 +16,5 @@ uvloop==0.16.0
 watchgod==0.8.2
 websockets==10.3
 minio==7.1.7
+urllib3==1.26.9
+fastapi-pagination==0.9.3

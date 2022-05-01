@@ -1,23 +1,22 @@
 from fastapi import FastAPI
 
-from api.routes import basics_router, images_router
-from core import secrets, TimingMiddleware
-from providers import minio_client
+from api import router
+from core import TimingMiddleware, configure_exception_handlers
+from fastapi_pagination import add_pagination
 
 app = FastAPI()
 
 # Routing
-app.include_router(basics_router)
-app.include_router(images_router)
+app.include_router(router)
 
 # Provide middleware
 app.add_middleware(TimingMiddleware)
 
-# Provide secret data
-secrets.download()
+# Provide exception handlers
+configure_exception_handlers(app)
 
-# Initialize providers
-minio_client.get_client()
+# Add pagination for images getter
+add_pagination(app)
 
 
 if __name__ == '__main__':

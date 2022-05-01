@@ -1,5 +1,3 @@
-from .secrets import SecretsHolder
+from .settings import settings
 from .middleware import TimingMiddleware
-
-secrets = SecretsHolder()
-
+from .exception_handlers import configure_exception_handlers
