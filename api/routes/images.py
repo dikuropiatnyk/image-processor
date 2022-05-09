@@ -5,38 +5,32 @@ from fastapi import APIRouter, Depends
 from fastapi_pagination import Page, paginate
 from typing import List
 
-from models import EncodedImages, MinioCreateResponse, MinioImage
-from providers import MinioConnection
+from models import EncodedImages, OpenioCreateResponse, OpenioImage
+from providers import openio_client
 from utils.helpers import map_images
 
 router = APIRouter(prefix="/images")
 
 
-@router.get("", response_model=Page[MinioImage])
-async def get_images(minio_client: MinioConnection = Depends()):
-    # Get images generator
-    images_gen = minio_client.get_images()
-
-    images = map_images(images_gen)
-    logging.info(f"Total images count: {len(images)}")
+@router.get("", response_model=Page[OpenioImage])
+async def get_images():
+    images = await openio_client.get_images()
     return paginate(images)
 
 
-@router.post("/process", response_model=List[MinioCreateResponse])
-async def process_images(
-    images: EncodedImages,
-    minio_client: MinioConnection = Depends(),
- ):
+@router.post("/process", response_model=List[OpenioCreateResponse])
+async def process_images(images: EncodedImages):
     response = []
 
     logging.info("Received %s images. Start processing...", len(images.Images))
     for image in images.Images:
         decoded_object = base64.decodebytes(str.encode(image.Encoded))
-        result = minio_client.send_image(image.Name, decoded_object)
+        result = await openio_client.send_image(image.Name, decoded_object)
         response.append(
-            MinioCreateResponse(
-                object_name=result.object_name,
-                etag=result.etag
+            OpenioCreateResponse(
+                object_name=image.Name,
+                etag=result[0].strip('"'),
+                last_modified=result[1],
             )
         )
 

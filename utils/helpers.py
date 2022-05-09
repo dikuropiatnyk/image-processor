@@ -2,10 +2,11 @@ import asyncio
 import time
 import logging
 from functools import wraps
-from typing import Iterator, List
-from minio.datatypes import Object
+from typing import Iterator, List, Dict
+from aiohttp.client_exceptions import ClientResponseError
+from fastapi import status
 
-from models import MinioImage
+from models import OpenioImage
 
 
 def _log_timing(func, start, finish):
@@ -39,6 +40,30 @@ def async_log_timing(func):
     return wrapper
 
 
+def refresh_token(method):
+    """
+    Class decorator for OpenIO authorized requests
+    Executes method and tries to refresh the auth token
+    """
+    @wraps(method)
+    async def wrapper(self, *args, **kwargs):
+        retries = 2
+        while retries:
+            try:
+                result = await method(self, *args, **kwargs)
+                return result
+            except ClientResponseError as err:
+                if err.status == status.HTTP_401_UNAUTHORIZED and retries > 1:
+                    # Try to refresh token, if it's first such error
+                    logging.warning("Auth token is outdated, try to refresh")
+                    await asyncio.sleep(2)
+                    await self.create_connection()
+                    retries -= 1
+                    continue
+                raise err from None
+    return wrapper
+
+
 def log_timing(func):
     """
     Synchronous decorator for time tracking
@@ -54,13 +79,13 @@ def log_timing(func):
     return wrapper
 
 
-def map_images(images_gen: Iterator[Object]) -> List[MinioImage]:
+def map_images(images_gen: Iterator[Dict]) -> List[OpenioImage]:
     return [
-        MinioImage(
-            id=image.etag,
-            image_name=image.object_name,
-            timestamp=image.last_modified,
-            image_size=round(image.size / 1024, 2)
+        OpenioImage(
+            id=image["hash"],
+            image_name=image["name"],
+            timestamp=image["last_modified"],
+            image_size=round(image["bytes"] / 1024, 2)
         )
         for image in images_gen
     ]
