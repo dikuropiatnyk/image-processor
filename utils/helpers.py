@@ -56,7 +56,7 @@ def refresh_token(method):
                 if err.status == status.HTTP_401_UNAUTHORIZED and retries > 1:
                     # Try to refresh token, if it's first such error
                     logging.warning("Auth token is outdated, try to refresh")
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(1)
                     await self.create_connection()
                     retries -= 1
                     continue
