@@ -1,10 +1,13 @@
 import logging
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
-from aiohttp.client_exceptions import ClientError
+from pymongo.errors import PyMongoError
 
 
-async def url_connection_exception_handler(request: Request, exc: ClientError):
+async def url_connection_exception_handler(
+    request: Request,
+    exc: PyMongoError,
+):
     logging.error(
         f"Connection error! Details: {exc}",
         exc_info=True
@@ -18,4 +21,4 @@ async def url_connection_exception_handler(request: Request, exc: ClientError):
 
 
 def configure_exception_handlers(app: FastAPI):
-    app.add_exception_handler(ClientError, url_connection_exception_handler)
+    app.add_exception_handler(PyMongoError, url_connection_exception_handler)
