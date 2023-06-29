@@ -33,8 +33,8 @@ def prepare_watermark(db_watermark: DBImage) -> np.ndarray:
     watermark_resized = cv2.resize(
         converted_watermark,
         (
-            settings.watermark_height,
-            settings.watermark_width,
+            settings.WATERMARK_HEIGHT,
+            settings.WATERMARK_WIDTH,
         )
     )
     return watermark_resized
@@ -51,8 +51,8 @@ async def apply_watermark_on_image_and_upload(
     h_image, w_image, _ = converted_image.shape
 
     # Create left top corner of the region to put a watermark
-    x = w_image - settings.watermark_width
-    y = h_image - settings.watermark_height
+    x = w_image - settings.WATERMARK_WIDTH
+    y = h_image - settings.WATERMARK_HEIGHT
 
     # Region of interest
     roi = converted_image[y:h_image, x:w_image]

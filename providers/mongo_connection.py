@@ -17,18 +17,18 @@ class MongoDBConnection:
 
     def __init__(self):
         self._client = motor.motor_asyncio.AsyncIOMotorClient(
-            f"mongodb://{settings.mongo_user}:"
-            f"{settings.mongo_pwd}@{settings.mongo_url}",
+            f"mongodb://{settings.MONGO_USER}:"
+            f"{settings.MONGO_PWD}@{settings.MONGO_URL}",
             serverSelectionTimeoutMS=5000,
         )
-        self._db = getattr(self._client, settings.db_name)
+        self._db = getattr(self._client, settings.DB_NAME)
         self.images: AgnosticCollection = getattr(
             self._db,
-            settings.image_container,
+            settings.IMAGE_CONTAINER,
         )
         self.watermarks: AgnosticCollection = getattr(
             self._db,
-            settings.watermark_container,
+            settings.WATERMARK_CONTAINER,
         )
 
     @classmethod
