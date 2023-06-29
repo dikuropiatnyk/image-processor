@@ -9,20 +9,14 @@ class Pagination(BaseModel):
     offset: int
 
 
-class BaseOutputImage(BaseModel):
+class OutputImage(BaseModel):
     id: str
     name: str
     created_at: datetime
+    description: str = ""
 
 
-class OutputProcessedImage(BaseOutputImage):
-    """
-    Processed image with a watermark in the storage
-    """
-    description: str
-
-
-class OutputWatermark(BaseOutputImage):
+class OutputWatermark(OutputImage):
     """
     A watermark image in the storage
     """
@@ -30,7 +24,7 @@ class OutputWatermark(BaseOutputImage):
 
 
 class ProcessedImages(BaseModel):
-    images: list[OutputProcessedImage]
+    images: list[OutputImage]
     paging: Pagination
 
 

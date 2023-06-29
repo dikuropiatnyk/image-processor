@@ -1,8 +1,8 @@
 from .db_document import DBImage
-from .encoded_image import EncodedImage, EncodedImages
+from .encoded_image import DefaultWatermark, EncodedImage, EncodedImages
 from .openio import OpenioCreateResponse, OpenioImage
 from .output import (
-    OutputProcessedImage,
+    OutputImage,
     OutputWatermark,
     Pagination,
     ProcessedImages,

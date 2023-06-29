@@ -1,15 +1,25 @@
 import logging
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, status
+from starlette.responses import JSONResponse
 
 from core import ImageResponse
-from models import Pagination, ProcessedImages, Watermarks
+from models import (
+    DefaultWatermark,
+    EncodedImage,
+    EncodedImages,
+    Pagination,
+    ProcessedImages,
+    Watermarks,
+)
 from providers import mongo_client
+from utils.image_processing import apply_watermark_on_image, prepare_watermark
 
 
 router = APIRouter(prefix="/mongo")
 
 
+# RETRIEVE ENDPOINTS
 @router.get("/images", response_model=ProcessedImages)
 async def get_images(
     limit: int = Query(default=1, ge=1, le=50),
@@ -33,8 +43,9 @@ async def get_images(
 @router.get(
     "/images/{image_id}",
     response_class=ImageResponse,
+    status_code=status.HTTP_200_OK,
     responses={
-        200: {
+        status.HTTP_200_OK: {
             "content": {"image/jpeg": {}}
         }
     },
@@ -67,8 +78,9 @@ async def get_watermarks(
 @router.get(
     "/watermarks/default",
     response_class=ImageResponse,
+    status_code=status.HTTP_200_OK,
     responses={
-        200: {
+        status.HTTP_200_OK: {
             "content": {"image/jpeg": {}}
         }
     },
@@ -81,8 +93,9 @@ async def get_default_watermark():
 @router.get(
     "/watermarks/{watermark_id}",
     response_class=ImageResponse,
+    status_code=status.HTTP_200_OK,
     responses={
-        200: {
+        status.HTTP_200_OK: {
             "content": {"image/jpeg": {}}
         }
     },
@@ -92,3 +105,48 @@ async def get_specific_watermark(watermark_id: str):
     return ImageResponse(watermark)
 
 
+# MODIFY ENDPOINTS
+@router.put("/watermarks/default")
+async def set_default_watermark(watermark: DefaultWatermark):
+    await mongo_client.set_default_watermark(watermark.id)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "message": "Default watermark was set"
+        }
+    )
+
+
+@router.post("/watermarks/upload")
+async def upload_watermark(watermark: EncodedImage):
+    object_id = await mongo_client.upload_watermark(watermark)
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content={"result": f"Image was uploaded with id: {object_id}"}
+    )
+
+
+@router.post("/images/process")
+async def process_images(data: EncodedImages):
+    logging.info(f"Received {len(data.images)} images. Start processing...")
+
+    logging.info("Trying to get a watermark...")
+    if data.watermark_id:
+        watermark = await mongo_client.get_watermark_by_id(data.watermark_id)
+    else:
+        watermark = await mongo_client.get_watermark_by_default()
+    logging.info(f"Watermark {watermark.name} will be used")
+
+    prepared_watermark = prepare_watermark(watermark)
+
+    for image in data.images:
+        apply_watermark_on_image(
+            image=image, prepared_watermark=prepared_watermark
+        )
+
+    await mongo_client.bulk_upload_images(data.images)
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"result": "Todaloo!"}
+    )

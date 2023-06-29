@@ -2,13 +2,12 @@ import logging
 import motor.motor_asyncio
 
 from bson import ObjectId
-from bson.errors import InvalidId
 from fastapi import HTTPException, status
 from motor.core import AgnosticCollection
 from typing import Type, Optional
 
 from core import settings
-from models import DBImage, OutputProcessedImage, OutputWatermark
+from models import DBImage, OutputImage, OutputWatermark, EncodedImage
 
 
 class MongoDBConnection:
@@ -116,10 +115,16 @@ class MongoDBConnection:
 
     async def upload_watermark(
         self,
-        watermark: dict,
+        watermark: EncodedImage,
     ):
-        object_id = self.upload_image_document(
-            image_document=watermark,
+        image_document = {
+            # Set new watermark as the not default one
+            "is_default": False,
+            **watermark.dict()
+        }
+
+        object_id = await self.upload_image_document(
+            image_document=image_document,
             collection=self.watermarks,
         )
         return object_id
@@ -129,7 +134,7 @@ class MongoDBConnection:
         limit: int = 0,
         offset: int = 0,
         name: Optional[str] = None,
-    ) -> (int, list[OutputProcessedImage]):
+    ) -> (int, list[OutputImage]):
         """
         Validates the amount of available images, and applies the
         pagination parameters
@@ -139,7 +144,7 @@ class MongoDBConnection:
             collection=self.images,
             limit=limit,
             offset=offset,
-            response_class=OutputProcessedImage,
+            response_class=OutputImage,
             name=name,
         )
 
@@ -208,3 +213,60 @@ class MongoDBConnection:
             collection=self.watermarks,
             filters=filters,
         )
+
+    async def set_default_watermark(self, _id: ObjectId):
+        """
+        Custom method to update default watermark
+        """
+        new_watermark = await self.watermarks.find_one(
+            # Search for the possible new watermark
+            {"_id": {"$eq": _id}},
+            # Ask only for its ID and is_default values
+            {"_id": 1, "is_default": 1},
+        )
+
+        if not new_watermark:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="There is no such watermark!"
+            )
+
+        # If this watermark is already default one, no need to update
+        if new_watermark.get("is_default") is False:
+            # Previous and new watermarks will be updated
+            or_conditions = {
+                "$or": [
+                    {"is_default": True},
+                    {"_id": _id},
+                ],
+            }
+            # Old default will become false, new - true
+            inverse_default_value = [
+                {
+                    "$set": {
+                        "is_default": {
+                            # If it's False, $eq will return true,
+                            # otherwise it will be false
+                            "$eq": [
+                                False,
+                                "$is_default"
+                            ]
+                        }
+                    }
+                }
+            ]
+
+            result = await self.watermarks.update_many(
+                or_conditions,
+                inverse_default_value,
+            )
+            logging.info(
+                f"Update default modified {result.modified_count} doc(s)"
+            )
+
+    async def bulk_upload_images(self, images: list[EncodedImage]):
+        logging.info(f"Attempting to upload {len(images)} images")
+        result = await self.images.insert_many(
+            [image.dict() for image in images]
+        )
+        logging.info(f"Added {result.inserted_ids} new images")

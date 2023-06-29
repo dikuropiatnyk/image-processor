@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     mongo_user: str
     mongo_pwd: str
     mongo_url: str
+    watermark_height: int = 100
+    watermark_width: int = 100
 
 
 settings = Settings(
