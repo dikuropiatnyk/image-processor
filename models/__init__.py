@@ -7,4 +7,5 @@ from .output import (
     Pagination,
     ProcessedImages,
     Watermarks,
+    UploadedImage,
 )

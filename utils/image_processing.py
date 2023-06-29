@@ -2,10 +2,11 @@ import cv2
 import numpy as np
 import bson
 
-from typing import Union
+from typing import Optional, Union
 
 from core import settings
-from models import DBImage, EncodedImage
+from models import DBImage, EncodedImage, UploadedImage
+from providers import mongo_client
 
 
 def convert_binary_image_to_cv2(
@@ -39,10 +40,10 @@ def prepare_watermark(db_watermark: DBImage) -> np.ndarray:
     return watermark_resized
 
 
-def apply_watermark_on_image(
+async def apply_watermark_on_image_and_upload(
     image: EncodedImage,
     prepared_watermark: np.ndarray,
-):
+) -> Optional[UploadedImage]:
     # Raw Data will already be binary because of the validator
     converted_image = convert_binary_image_to_cv2(image.raw_data)
     # Get size of image, but it usually should be fixed
@@ -61,3 +62,7 @@ def apply_watermark_on_image(
     converted_image[y:h_image, x:w_image] = result
     binary_image = convert_cv2_image_to_binary(converted_image)
     image.raw_data = binary_image
+
+    object_id = await mongo_client.upload_processed_image(image.dict())
+    if object_id:
+        return UploadedImage(id=str(object_id), name=image.name)

@@ -31,3 +31,8 @@ class ProcessedImages(BaseModel):
 class Watermarks(BaseModel):
     images: list[OutputWatermark]
     paging: Pagination
+
+
+class UploadedImage(BaseModel):
+    id: str
+    name: str

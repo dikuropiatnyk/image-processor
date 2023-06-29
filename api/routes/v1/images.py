@@ -1,7 +1,9 @@
+import asyncio
 import logging
 
 from fastapi import APIRouter, Query, status
 from starlette.responses import JSONResponse
+from typing import List
 
 from core import ImageResponse
 from models import (
@@ -11,18 +13,19 @@ from models import (
     Pagination,
     ProcessedImages,
     Watermarks,
+    UploadedImage,
 )
 from providers import mongo_client
-from utils.image_processing import apply_watermark_on_image, prepare_watermark
+from utils.image_processing import apply_watermark_on_image_and_upload, prepare_watermark
 
 
-router = APIRouter(prefix="/mongo")
+router = APIRouter(prefix="/v1", tags=["Image Processing"])
 
 
 # RETRIEVE ENDPOINTS
 @router.get("/images", response_model=ProcessedImages)
 async def get_images(
-    limit: int = Query(default=1, ge=1, le=50),
+    limit: int = Query(default=10, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
     name: str = Query(default=None, min_length=3, max_length=25),
 ):
@@ -57,7 +60,7 @@ async def get_specific_image(image_id: str):
 
 @router.get("/watermarks", response_model=Watermarks)
 async def get_watermarks(
-    limit: int = Query(default=1, ge=1, le=50),
+    limit: int = Query(default=10, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
     name: str = Query(default=None, min_length=3, max_length=25),
 ):
@@ -126,7 +129,10 @@ async def upload_watermark(watermark: EncodedImage):
     )
 
 
-@router.post("/images/process")
+@router.post(
+    "/images/process",
+    response_model=List[UploadedImage],
+)
 async def process_images(data: EncodedImages):
     logging.info(f"Received {len(data.images)} images. Start processing...")
 
@@ -139,14 +145,11 @@ async def process_images(data: EncodedImages):
 
     prepared_watermark = prepare_watermark(watermark)
 
-    for image in data.images:
-        apply_watermark_on_image(
-            image=image, prepared_watermark=prepared_watermark
-        )
-
-    await mongo_client.bulk_upload_images(data.images)
-
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={"result": "Todaloo!"}
+    # Apply watermark on images in coroutines
+    uploaded_images = await asyncio.gather(
+        *[
+            apply_watermark_on_image_and_upload(image, prepared_watermark)
+            for image in data.images
+        ]
     )
+    return uploaded_images

@@ -107,7 +107,7 @@ class MongoDBConnection:
         self,
         processed_image: dict,
     ):
-        object_id = self.upload_image_document(
+        object_id = await self.upload_image_document(
             image_document=processed_image,
             collection=self.images,
         )
@@ -264,9 +264,10 @@ class MongoDBConnection:
                 f"Update default modified {result.modified_count} doc(s)"
             )
 
-    async def bulk_upload_images(self, images: list[EncodedImage]):
+    async def bulk_upload_images(self, images: list[EncodedImage]) -> list:
         logging.info(f"Attempting to upload {len(images)} images")
         result = await self.images.insert_many(
             [image.dict() for image in images]
         )
         logging.info(f"Added {result.inserted_ids} new images")
+        return result.inserted_ids
