@@ -3,12 +3,12 @@ import bson
 
 from datetime import datetime
 from pydantic import BaseModel, validator
-from typing import List
+from typing import List, Union
 
 
 class EncodedImage(BaseModel):
     name: str
-    raw_data: str
+    raw_data: Union[str, bytes]
     description: str = ""
     created_at: datetime = None
 
@@ -16,7 +16,12 @@ class EncodedImage(BaseModel):
     def convert_image_to_bytes(cls, v):
         if not v:
             raise ValueError("Encoded image should be provided!")
-        return bson.Binary(base64.b64decode(v))
+        # For encoded images base64 should be applied
+        if isinstance(v, str):
+            return bson.Binary(base64.b64decode(v))
+        elif isinstance(v, bytes):
+            return bson.Binary(v)
+        raise ValueError("Unknown type of raw_data")
 
     @validator("created_at", pre=True, always=True)
     def set_up_current_datetime(cls, v):

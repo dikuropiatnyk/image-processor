@@ -9,3 +9,6 @@ images/
 
 # Environment file
 .env.secrets
+
+# Local mongo mounts
+mongo-data/
